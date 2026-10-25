@@ -40,7 +40,10 @@ if ($Scope -eq 'Auto') { $Scope = if ($isSystem) { 'Machine' } else { 'User' } }
 if ($Scope -eq 'Machine' -and -not $isAdmin) { Write-Error 'Machine scope needs an elevated prompt (Run as administrator), or use -Scope User.'; exit 1 }
 if ($Scope -eq 'User' -and $isSystem) { Write-Error 'Running as SYSTEM: use -Scope Machine (User scope would install into the SYSTEM profile).'; exit 1 }
 
-$dest = if ($Scope -eq 'Machine') { Join-Path $env:ProgramFiles $AppName } else { Join-Path $env:LOCALAPPDATA "Programs\$AppName" }
+# ProgramW6432 is the 64-bit Program Files even in a 32-bit PowerShell (the Intune Management Extension
+# launches install commands from a 32-bit process, where %ProgramFiles% is "Program Files (x86)")
+$programFiles = if ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }
+$dest = if ($Scope -eq 'Machine') { Join-Path $programFiles $AppName } else { Join-Path $env:LOCALAPPDATA "Programs\$AppName" }
 $regKey = if ($Scope -eq 'Machine') { 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment' } else { 'HKCU:\Environment' }
 
 # ---------- PATH helpers (read/write raw so %VARS% in PATH are preserved as REG_EXPAND_SZ) ----------
