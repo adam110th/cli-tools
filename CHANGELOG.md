@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.1.0 - 26/10/2026
+
+### Added
+- **`cli-tools`** help command on every platform: lists each tool with its arguments, options, exit codes and a description. `cli-tools`, `cli-tools -h` and `cli-tools --help` all show it (`/?` too in cmd).
+- **`man cli-tools`** (Linux): `man/cli-tools.1`, installed by `install.sh` to `~/.local/share/man/man1` or `/usr/local/share/man/man1` and removed on uninstall.
+
+### Changed
+- Installers report version 1.1.0 (`VERSION.txt`).
+
 ## v1.0.0 - 25/10/2026
 
 Initial release.

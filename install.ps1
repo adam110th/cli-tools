@@ -29,7 +29,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$Version = '1.0.0'
+$Version = '1.1.0'
 $AppName = 'cli-tools'
 
 # ---------- scope and destination ----------
