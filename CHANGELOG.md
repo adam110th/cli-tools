@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0.1 - 25/10/2026
+
+### Fixed
+- `install.ps1` machine scope now always installs to the 64-bit `Program Files` (via `%ProgramW6432%`). Intune can run Win32 app installs in 32-bit PowerShell, where `%ProgramFiles%` is `Program Files (x86)`, so the tools landed in the wrong folder and the documented detection rule failed.
+
 ## v1.0.0 - 25/10/2026
 
 Initial release.

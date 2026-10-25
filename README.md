@@ -98,6 +98,8 @@ function refreshenv { . (Get-Command refreshenv.ps1).Source }
 | Detection rule | File exists: `%ProgramFiles%\cli-tools\VERSION.txt` (or compare its contents to the version for upgrades) |
 | Return codes | `0` success, `1` failure |
 
+The installer always targets the 64-bit `Program Files`, so it is safe when Intune runs the install command in 32-bit PowerShell. A ready-made package (signed scripts, detection script, build script) lives in the `intune-winpacman` repo under `custom-packages/AAAG-CLI-Tools-1.0`; deploy it with `python -m intune_winpacman deploy-custom`.
+
 If an AllSigned execution policy is enforced, sign the `.ps1` files before packaging; `-ExecutionPolicy Bypass` does not override a Group Policy or Intune setting.
 
 ### Linux
