@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.1.1 - 26/10/2026
+
+### Fixed
+- **`empty-directories` could delete files outside the listed folders through junctions and symbolic links.** On Windows, `robocopy /MIR` purges through a junction inside the folder (with or without `/XJ`), and the PowerShell fallback and item count followed links too. Links inside a listed folder are now removed as links before robocopy runs (robocopy is skipped if one cannot be removed), and the fallback and count never follow them. On both platforms, an entry whose path goes through a junction or symbolic link (below the base path for relative entries) is now Blocked.
+- `install.ps1`: machine scope installs to the 64-bit Program Files even when run from 32-bit PowerShell (as the Intune Management Extension does).
+
+### Changed
+- Installers report version 1.1.1 (`VERSION.txt`), so deployments of 1.1.0 (e.g. Intune) upgrade.
+
 ## v1.1.0 - 26/10/2026
 
 ### Added
@@ -8,10 +17,6 @@
 
 ### Changed
 - Installers report version 1.1.0 (`VERSION.txt`).
-
-### Fixed
-- **`empty-directories` could delete files outside the listed folders through junctions and symbolic links.** On Windows, `robocopy /MIR` purges through a junction inside the folder (with or without `/XJ`), and the PowerShell fallback and item count followed links too. Links inside a listed folder are now removed as links before robocopy runs (robocopy is skipped if one cannot be removed), and the fallback and count never follow them. On both platforms, an entry whose path goes through a junction or symbolic link (below the base path for relative entries) is now Blocked.
-- `install.ps1`: machine scope installs to the 64-bit Program Files even when run from 32-bit PowerShell (as the Intune Management Extension does).
 
 ## v1.0.0 - 25/10/2026
 

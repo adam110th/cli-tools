@@ -4,7 +4,7 @@
 .EXAMPLE   cli-tools --help
 #>
 # No param block on purpose: -h, --help and /? arrive in $args instead of failing parameter binding.
-$Version = '1.1.0'
+$Version = '1.1.1'
 # Flat install keeps docs\ beside the scripts; the repo layout has it one level up
 $docs = Join-Path $PSScriptRoot 'docs'
 if (-not (Test-Path -LiteralPath $docs)) { $docs = Join-Path (Split-Path $PSScriptRoot -Parent) 'docs' }

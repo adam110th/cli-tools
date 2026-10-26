@@ -2,7 +2,7 @@
 # cli-tools - help for cli-tools: every tool, its arguments and options, and what it does.
 # Usage: cli-tools [-h|--help]   (plain "cli-tools" shows the same help; see also: man cli-tools)
 set -u
-VERSION=1.1.0
+VERSION=1.1.1
 
 show_help() {
     cat <<EOF

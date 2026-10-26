@@ -12,7 +12,7 @@
 #   default scope: --system when run as root, otherwise --user
 set -euo pipefail
 
-APP=cli-tools VERSION=1.1.0
+APP=cli-tools VERSION=1.1.1
 scope="" uninstall=0
 for a in "$@"; do
     case "$a" in
