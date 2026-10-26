@@ -171,6 +171,12 @@ for e in "${entries[@]}"; do
     if [[ -L "$full" ]]; then
         add_result "$e" "$full" Blocked 0 "Path is a symbolic link"; continue
     fi
+    # a symlinked parent would make find -delete empty the link's target instead. Links above the
+    # base path are the user's choice, so relative entries are compared below the resolved base only.
+    want="$full"; [[ "$e" != /* ]] && want="$(realpath -e -- "$BASE")${full#"$BASE"}"
+    if [[ -e "$full" && "$(realpath -e -- "$full")" != "$want" ]]; then
+        add_result "$e" "$full" Blocked 0 "Path goes through a symbolic link; list the real folder instead"; continue
+    fi
     if [[ -d "$full" ]]; then
         add_result "$e" "$full" Found "$(item_count "$full")" ""
     elif [[ -e "$full" ]]; then

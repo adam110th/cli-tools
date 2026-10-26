@@ -69,8 +69,45 @@ function Read-YesNo([string]$Question) {
     }
 }
 
+# Junctions and directory symbolic links are never followed: emptying a folder must not reach
+# whatever a link inside it points to. (Get-ChildItem -Recurse follows them in Windows PowerShell 5.1.)
+function Test-IsLink($Item) {
+    return ($Item.PSIsContainer -and $Item.LinkType -in 'Junction', 'SymbolicLink')
+}
+
+function Get-TreeItems([string]$Path) {
+    foreach ($c in @(Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue)) {
+        $c
+        if ($c.PSIsContainer -and -not (Test-IsLink $c)) { Get-TreeItems $c.FullName }
+    }
+}
+
 function Get-ItemCount([string]$Path) {
-    return @(Get-ChildItem -LiteralPath (Get-LongPath $Path) -Recurse -Force -ErrorAction SilentlyContinue).Count
+    return @(Get-TreeItems (Get-LongPath $Path)).Count
+}
+
+# First junction or symbolic link on the way to $Path (the folder itself or a parent below $StopAt), or $null
+function Get-LinkInPath([string]$Path, [string]$StopAt) {
+    $p = $Path
+    while ($p -and -not (Test-IsRoot $p) -and $p -ne $StopAt) {
+        $item = Get-Item -LiteralPath (Get-LongPath $p) -Force -ErrorAction SilentlyContinue
+        if ($item -and (Test-IsLink $item)) { return $p }
+        $p = Split-Path -Path $p -Parent
+    }
+    return $null
+}
+
+# Delete everything under $Path; a junction or symbolic link is removed as a link, never followed
+function Remove-TreeContents([string]$Path) {
+    foreach ($c in @(Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue)) {
+        if ($c.PSIsContainer) {
+            if (-not (Test-IsLink $c)) { Remove-TreeContents $c.FullName }
+            # Non-recursive delete of a link removes only the link. Failures are counted as leftovers below.
+            try { [IO.Directory]::Delete($c.FullName, $false) } catch { Write-Verbose "Could not remove $($c.FullName): $_" }
+        } else {
+            Remove-Item -LiteralPath $c.FullName -Force -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 $errorSuffix   = '\s+-\s+(The directory is not empty|The filename, directory name, or volume label syntax is incorrect|The system cannot find the (file|path) specified|Access is denied)\.?\s*$'
@@ -167,6 +204,11 @@ $results = foreach ($e in $entries) {
     if (-not (Test-IsAbsolute $e) -and -not $full.StartsWith($BasePath + '\', [StringComparison]::OrdinalIgnoreCase)) {
         $r.Status = 'Blocked'; $r.Detail = 'Relative entry resolves outside the base path'; $r; continue
     }
+    # Links above the base path are the user's choice; only those below it (or anywhere, for absolute entries) count
+    $link = Get-LinkInPath $full $(if (Test-IsAbsolute $e) { '' } else { $BasePath })
+    if ($link) {
+        $r.Status = 'Blocked'; $r.Detail = "Path is or goes through a junction/symbolic link ($link); list the real folder instead"; $r; continue
+    }
 
     $long = Get-LongPath $full
     if (Test-Path -LiteralPath $long -PathType Container) {
@@ -208,15 +250,21 @@ try {
         if (-not $PSCmdlet.ShouldProcess($r.FullPath, ($(if ($KeepFolders) {'Empty directory'} else {'Empty and remove directory'})))) {
             $r.Status = 'WhatIf'; continue
         }
-        & robocopy.exe $emptySrc $r.FullPath /MIR /R:2 /W:2 /NFL /NDL /NJH /NJS /NP | Out-Null
-        if ($LASTEXITCODE -ge 8) { $r.Detail = "robocopy exit code $LASTEXITCODE" }
-
-        # fallback for read-only or locked leftovers
+        # robocopy's /MIR purge deletes THROUGH junctions and directory symlinks (even with /XJ), so
+        # remove the links themselves first, and skip robocopy if any of them cannot be removed
         $long = Get-LongPath $r.FullPath
-        if ((Get-ItemCount $r.FullPath) -gt 0) {
-            Get-ChildItem -LiteralPath $long -Force -ErrorAction SilentlyContinue |
-                Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        foreach ($l in @(Get-TreeItems $long | Where-Object { Test-IsLink $_ })) {
+            try { [IO.Directory]::Delete($l.FullName, $false) } catch { Write-Verbose "Could not remove link $($l.FullName): $_" }
         }
+        if (@(Get-TreeItems $long | Where-Object { Test-IsLink $_ }).Count -eq 0) {
+            & robocopy.exe $emptySrc $r.FullPath /MIR /R:2 /W:2 /NFL /NDL /NJH /NJS /NP | Out-Null
+            if ($LASTEXITCODE -ge 8) { $r.Detail = "robocopy exit code $LASTEXITCODE" }
+        } else {
+            $r.Detail = 'A junction/symbolic link inside could not be removed, so robocopy was skipped'
+        }
+
+        # fallback for read-only or locked leftovers (never follows links)
+        if ((Get-ItemCount $r.FullPath) -gt 0) { Remove-TreeContents $long }
 
         $left = Get-ItemCount $r.FullPath
         if ($left -gt 0) {
