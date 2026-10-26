@@ -42,13 +42,13 @@ Every entry is checked before anything is deleted. These are reported as warning
 - **NotFound** - the directory does not exist.
 - **NotADirectory** - the path is a file.
 - **Invalid** (Windows) - the name contains characters Windows cannot use, such as `"`. Delete these in the cloud service's web interface.
-- **Blocked** - a drive or share root, the base path itself, a relative entry that escapes the base path with `..`, or (Linux) a symbolic link.
+- **Blocked** - a drive or share root, the base path itself, a relative entry that escapes the base path with `..`, or a path that is or goes through a junction or symbolic link (below the base path, for relative entries). List the real folder instead.
 
 The tool then lists each directory with its item count and asks you to type `YES`.
 
 ## How it deletes
-- Windows: `robocopy /MIR` from an empty folder, which handles paths over 260 characters, then a PowerShell fallback for read-only leftovers.
-- Linux: `find -delete`.
+- Windows: junctions and directory symbolic links inside the folder are removed first (the link only, never what it points to), because `robocopy /MIR` purges *through* them even with `/XJ`. Then `robocopy /MIR` from an empty folder, which handles paths over 260 characters, then a PowerShell fallback for read-only leftovers that also never follows links.
+- Linux: `find -delete`, which removes symbolic links without following them.
 
 ## Exit codes
 `0` all done; `1` cancelled, bad input or nothing to do; `2` some entries skipped, or items were left behind (usually a sync lock or open file).
