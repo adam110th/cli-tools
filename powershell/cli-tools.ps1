@@ -4,7 +4,9 @@
 .EXAMPLE   cli-tools --help
 #>
 # No param block on purpose: -h, --help and /? arrive in $args instead of failing parameter binding.
-$Version = '1.1.1'
+$Version = '1.2.0'
+# Colour only on an interactive console: not when redirected, piped, or NO_COLOR is set.
+$useColor = $Host.UI.SupportsVirtualTerminal -and -not [Console]::IsOutputRedirected -and -not $env:NO_COLOR -and $MyInvocation.PipelinePosition -eq $MyInvocation.PipelineLength
 # Flat install keeps docs\ beside the scripts; the repo layout has it one level up
 $docs = Join-Path $PSScriptRoot 'docs'
 if (-not (Test-Path -LiteralPath $docs)) { $docs = Join-Path (Split-Path $PSScriptRoot -Parent) 'docs' }
@@ -139,7 +141,38 @@ HELP
 
   cli-tools [-h | --help | /?]
       This help.
+
+THIRD-PARTY TOOLS (not part of cli-tools)
+
+  Other people's projects, recommended alongside cli-tools. Install them with
+  "install.cmd -Extras" or "install-extras.ps1 [TOOL...]", which use Chocolatey (installed
+  if missing; needs an elevated prompt) and fall back to winget. Update them with
+  choco upgrade / winget upgrade; each has its own --help.
+  Not on Windows: thefuck, fdupes (use dupfiles), ddgr, asciinema.
+
+  zoxide      Smarter cd: "z NAME" jumps to a frequently used folder; "zi" picks with fzf.
+  tldr        Short, example-first help pages: tldr tar  (tealdeer client).
+  scc         Count lines of code, comments and complexity per language.
+  eza         Modern ls. PowerShell function: eza -a -l -h -M --icons=always
+  duf         Disk usage and free space per drive, as a table.
+  bat         cat with syntax highlighting and paging.
+  exiftool    Read and write photo and document metadata (EXIF, XMP, IPTC, ...).
+  fzf         Fuzzy finder for any list: files, history, command output.
+  jq          Query and reshape JSON.
+  procs       Modern process list: coloured and searchable.
+  browsh      Text-mode web browser (needs Firefox).
+  lazygit     Terminal UI for git.
+  fastfetch   System summary beside the Windows logo (the Windows stand-in for neofetch).
+  tre         tree that respects .gitignore (copied into the cli-tools folder).
+  git         Version control.
+  gh          GitHub CLI: pull requests, issues, releases, sign-in.
+  claude      Claude Code, Anthropic's coding agent for the terminal.
 "@
+# headings and command names stand out on a console; redirected help is plain text
+if ($useColor) {
+    $e = [char]27
+    $help = $help -creplace '(?m)^([A-Z][A-Z -]+( \(.*\))?)\r?$', "$e[1;36m`$1$e[0m" -creplace '(?m)^  ([a-z][a-z-]+)( +[A-Z[\-]|  |\r?$)', "  $e[1m`$1$e[0m`$2"
+}
 
 if ($args.Count -eq 0 -or ($args.Count -eq 1 -and $args[0] -in '-h', '--help', '-help', '/?', '-?', 'help')) {
     $help

@@ -30,6 +30,18 @@ Type `cli-tools` (or `cli-tools --help`, or `man cli-tools` on Linux) for a refe
 
 **Wrapper** means the `.cmd` file runs the matching `.ps1` with the same arguments, because a native batch version would be unreliable. Wrappers look for the `.ps1` in the same folder first, then in `..\powershell\`, so they work in either layout below.
 
+## Third-party tools (not part of cli-tools)
+
+Separately from the tools above, the optional **extras** installers set up a list of other people's command-line tools that work well alongside them. They come from your package manager, not from this repo, and are updated the same way. `cli-tools --help` and `man cli-tools` list them in their own section.
+
+thefuck, zoxide, tldr, scc, eza, duf, bat, exiftool, fdupes, fzf, jq, procs, browsh, ddgr, lazygit, asciinema, neofetch, tre, git, gh, claude
+
+- **Linux:** `./install.sh --extras`, or `./install-extras.sh [TOOL...]` on its own. It uses apt, dnf, pacman, zypper, apk or brew, adds the GitHub CLI and eza apt repositories and keyrings where needed, and falls back to GitHub releases for tools a distro does not package.
+- **Windows:** `install.cmd -Extras`, or `.\install-extras.ps1 [TOOL...]` on its own. It installs Chocolatey if missing (elevated prompt), installs with Chocolatey and falls back to winget. thefuck, fdupes, ddgr and asciinema have no Windows version; fastfetch stands in for neofetch.
+- Both add `eza` as `eza -a -l -h -M --icons=always` and the zoxide hook to your shell (bash/zsh rc files, or the PowerShell profile). On Linux they also add the thefuck hook and `bat` for Debian's `batcat`.
+
+See [docs/extras.md](docs/extras.md) for the package used on each platform, the repositories added and the notes.
+
 ## Layout
 
 ```
@@ -41,6 +53,7 @@ cli-tools/
   man/          cli-tools.1 man page (Linux)
   install.ps1   Windows installer      install.cmd  launcher for it
   install.sh    Linux installer
+  install-extras.ps1 / install-extras.sh   optional third-party tools (see docs/extras.md)
   .gitattributes
 ```
 
@@ -71,12 +84,14 @@ From cmd (also refreshes PATH in that cmd window when it finishes):
 ```
 install.cmd                     :: current user
 install.cmd -Scope Machine      :: all users (elevated prompt)
+install.cmd -Extras             :: also install the third-party tools (elevated prompt for Chocolatey)
 install.cmd -Uninstall          :: remove (add -Scope Machine for a machine install)
 ```
 From PowerShell:
 ```powershell
 .\install.ps1                   # current user
 .\install.ps1 -Scope Machine    # all users (elevated prompt)
+.\install.ps1 -Extras           # also install the third-party tools
 .\install.ps1 -Uninstall
 ```
 If execution policy blocks `install.ps1`, use `install.cmd`, which runs it with `-ExecutionPolicy Bypass` for that one process.
@@ -109,6 +124,7 @@ If an AllSigned execution policy is enforced, sign the `.ps1` files before packa
 ```bash
 ./install.sh                    # current user
 sudo ./install.sh --system      # all users
+./install.sh --extras           # also install the third-party tools (asks for sudo)
 ./install.sh --uninstall        # remove (add --system for a system install)
 ```
 What the installer does:
@@ -132,6 +148,7 @@ Copy `powershell\*.ps1` and `cmd\*.cmd` into one folder on PATH (Windows), or co
 - **External calls:** `netinfo` contacts `https://api.ipify.org` only when asked (`--public` / `-Public` / `/public`). `dnscheck` queries 1.1.1.1 and 8.8.8.8 by default, which sends the looked-up name to Cloudflare and Google; pass your own servers for client or internal names. `certcheck` connects only to the host you name.
 - **Destructive actions:** only `empty-directories` deletes anything (`mdmstatus -Sync` triggers a sync but changes no settings; `dupfiles` and `syncsafe` only report). It validates every entry, lists what it will touch, and requires typing `YES`. It has a dry-run mode.
 - **Dates** in output use dd/mm/yyyy.
+- **Colour:** status words, headings and problems are coloured (green good, yellow warning, red problem, cyan headings) when output goes to a terminal. Piped or redirected output is plain text, and setting `NO_COLOR` turns colour off everywhere ([no-color.org](https://no-color.org)). Two cases where codes still appear: cmd cannot detect redirection, so native `.cmd` tools colour `> file` output; and in an interactive PowerShell window, `pathlist > file` or `$x = pathlist` keeps the codes in Windows PowerShell 5.1. Set `NO_COLOR=1` for those.
 
 ## Testing status
 
@@ -141,6 +158,8 @@ Copy `powershell\*.ps1` and `cmd\*.cmd` into one folder on PATH (Windows), or co
 | Run | All tools run on Ubuntu 24.04. Not exercised: `portowner` via `ss`, and `dnscheck` against a real `dig` (comparison logic tested with a stub). `certcheck` was run through a TLS-inspecting proxy, so only that path was seen. | Run under PowerShell 7 on Linux: `whichall`, `hashfile`, `portcheck`, `dirsize`, `bigfiles`, `certcheck`, `dupfiles`, and `syncsafe` (logic only). Windows-only tools not run. | not run |
 
 `install.sh` was tested on Ubuntu (user and system scope, re-run, clash protection, uninstall). `install.ps1` parses but has not been run on Windows.
+
+The extras installers (v1.2.0) have **not been run end to end**. `install-extras.sh` passes shellcheck, and its GitHub-release download patterns were checked against the current release file names. `install-extras.ps1` parses in PowerShell 5.1 and 7, and `-List`, argument checking and the profile-block update were tested. The Chocolatey, winget and package IDs were checked against `choco search` and `winget search`. Run each on a test machine before relying on it.
 
 Before deploying, run `install.cmd` (user and machine scope, then `-Uninstall`) and each Windows tool once on a test device, including the cmd wrappers from both a flat folder and the repo layout. Priorities: `refreshenv.cmd` (registry parsing), `pendingreboot.cmd`, `mdmstatus.ps1` (with and without elevation) and `dnscheck.ps1`.
 

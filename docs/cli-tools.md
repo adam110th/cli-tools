@@ -14,4 +14,6 @@ Plain `cli-tools` with no arguments shows the same help. Any other argument prin
 - The Windows help shows PowerShell syntax, with a `cmd:` line where the native Command Prompt version takes different arguments (`pathlist`, `netinfo`, `hashfile`, `dnscheck`). The Linux help and man page show the bash syntax.
 - `man cli-tools` works after running `install.sh`, which installs the page to `~/.local/share/man/man1` (user) or `/usr/local/share/man/man1` (system). `man` finds the user location because `~/.local/bin` is on PATH.
 - In PowerShell, `cli-tools -?` is intercepted by PowerShell itself and shows the script's short built-in help instead. Use `-h` or `--help`.
+- The help ends with a separate **THIRD-PARTY TOOLS (not part of cli-tools)** section listing the optional extras ([extras.md](extras.md)). The Windows help lists only the tools available on Windows.
+- On a terminal, headings and command names are coloured; piped output is plain text, and `NO_COLOR` turns colour off.
 - When adding or changing a tool, update all three help sources: `powershell/cli-tools.ps1`, `linux/cli-tools.sh` and `man/cli-tools.1`.

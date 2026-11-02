@@ -16,20 +16,24 @@
     pick it up. A VERSION.txt file is written for Intune detection rules.
 
 .PARAMETER Scope      Auto (default), User or Machine.
-.PARAMETER Uninstall  Remove the install folder and its PATH entry.
+.PARAMETER Extras     Also run install-extras.ps1: recommended third-party tools (eza, bat, fzf, gh, ...) from
+                      Chocolatey (installed if missing) or winget, plus the eza/zoxide PowerShell profile block.
+.PARAMETER Uninstall  Remove the install folder and its PATH entry, and the extras profile block.
 
 .EXAMPLE  .\install.ps1
 .EXAMPLE  .\install.ps1 -Scope Machine
+.EXAMPLE  .\install.ps1 -Extras
 .EXAMPLE  .\install.ps1 -Uninstall
 #>
 [CmdletBinding()]
 param(
     [ValidateSet('Auto', 'User', 'Machine')][string]$Scope = 'Auto',
+    [switch]$Extras,
     [switch]$Uninstall
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$Version = '1.1.1'
+$Version = '1.2.0'
 $AppName = 'cli-tools'
 
 # ---------- scope and destination ----------
@@ -77,6 +81,16 @@ if ($Uninstall) {
     if (Test-Path -LiteralPath $dest) { Remove-Item -LiteralPath $dest -Recurse -Force; "Removed: $dest" }
     else { "Not installed at: $dest" }
     $env:PATH = (@($env:PATH -split ';' | Where-Object { $_ -and -not (Test-SameDir $_ $dest) })) -join ';'
+    # profile block from install-extras.ps1 (the third-party packages themselves are left installed)
+    if (-not $isSystem) {
+        $docs = [Environment]::GetFolderPath('MyDocuments')
+        foreach ($p in (Join-Path $docs 'WindowsPowerShell\profile.ps1'), (Join-Path $docs 'PowerShell\profile.ps1')) {
+            if (-not (Test-Path -LiteralPath $p)) { continue }
+            $text = [IO.File]::ReadAllText($p)
+            $new = [regex]::Replace($text, '(?ms)^# >>> cli-tools extras >>>\r?$.*?^# <<< cli-tools extras <<<\r?\n?', '')
+            if ($new -ne $text) { [IO.File]::WriteAllText($p, $new, (New-Object Text.UTF8Encoding $true)); "Removed the cli-tools extras block from: $p" }
+        }
+    }
     exit 0
 }
 
@@ -85,7 +99,7 @@ $src = $PSScriptRoot
 $psDir  = if (Test-Path -LiteralPath (Join-Path $src 'powershell')) { Join-Path $src 'powershell' } else { $src }
 $cmdDir = if (Test-Path -LiteralPath (Join-Path $src 'cmd')) { Join-Path $src 'cmd' } else { $src }
 $files = @(Get-ChildItem -LiteralPath $psDir -Filter *.ps1 -File) + @(Get-ChildItem -LiteralPath $cmdDir -Filter *.cmd -File) |
-    Where-Object { $_.Name -notmatch '^install\.(ps1|cmd)$' }
+    Where-Object { $_.Name -notmatch '^install(-extras)?\.(ps1|cmd)$' }
 if ($files.Count -lt 2) { Write-Error "No tool scripts found next to install.ps1 (looked in $psDir and $cmdDir)."; exit 1 }
 
 # ---------- copy ----------
@@ -118,4 +132,10 @@ if (-not (@($env:PATH -split ';') | Where-Object { $_ -and (Test-SameDir $_ $des
 '(or run "refreshenv" in cmd / ". refreshenv" in PowerShell).'
 'Optional - make plain "refreshenv" work in PowerShell by adding this line to your profile ($PROFILE):'
 '  function refreshenv { . (Get-Command refreshenv.ps1).Source }'
+if ($Extras) {
+    $extrasScript = Join-Path $src 'install-extras.ps1'
+    if (-not (Test-Path -LiteralPath $extrasScript)) { Write-Error 'install-extras.ps1 not found next to install.ps1.'; exit 1 }
+    & $extrasScript
+    exit $LASTEXITCODE
+}
 exit 0

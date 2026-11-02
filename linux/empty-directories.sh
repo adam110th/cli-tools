@@ -3,6 +3,11 @@
 # Linux equivalent of Empty-Directories.ps1. Requires bash 4+ and GNU coreutils/findutils.
 
 set -uo pipefail
+# colour only on a terminal, and never when NO_COLOR is set (https://no-color.org); E* are the stderr set.
+# Not every tool uses every colour, hence the SC2034 directive.
+# shellcheck disable=SC2034
+{ if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then R=$'\e[31m' G=$'\e[32m' Y=$'\e[33m' C=$'\e[1;36m' B=$'\e[1m' D=$'\e[2m' N=$'\e[0m'; else R='' G='' Y='' C='' B='' D='' N=''; fi
+  if [[ -t 2 && -z "${NO_COLOR:-}" ]]; then ER=$'\e[31m' EY=$'\e[33m' EB=$'\e[1m' EN=$'\e[0m'; else ER='' EY='' EB='' EN=''; fi; }
 
 usage() {
     cat <<'EOF'
@@ -32,8 +37,8 @@ Exit codes: 0 clean run, 1 cancelled or nothing to do, 2 some entries skipped or
 EOF
 }
 
-die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
-warn() { printf '\033[33mWARNING: %s\033[0m\n' "$*" >&2; }
+die()  { printf '%sERROR: %s%s\n' "$ER" "$*" "$EN" >&2; exit 1; }
+warn() { printf '%sWARNING: %s%s\n' "$EY" "$*" "$EN" >&2; }
 
 BASE="" FORMAT="auto" KEEP=0 DRYRUN=0 FORCE=0 LOG="" INPUT=""
 while [[ $# -gt 0 ]]; do
@@ -144,7 +149,7 @@ if [[ $needs_base -eq 1 ]]; then
     else
         warn "No base path was given as a parameter or found in the input file."
         if ! read_yes_no "Use the current directory '$PWD' as the base path?"; then
-            echo 'Cancelled. Re-run with --base or add a "base: <path>" line to the input file.'
+            echo "${Y}Cancelled. Re-run with --base or add a \"base: <path>\" line to the input file.${N}"
             exit 1
         fi
         BASE="$PWD"
@@ -196,38 +201,38 @@ for i in "${!R_ENTRY[@]}"; do
     fi
 done
 
-if [[ ${#todo[@]} -eq 0 ]]; then echo "Nothing to do: no listed directories were found."; exit 1; fi
+if [[ ${#todo[@]} -eq 0 ]]; then echo "${Y}Nothing to do: no listed directories were found.${N}"; exit 1; fi
 
 echo
-echo "${#todo[@]} director$([[ ${#todo[@]} -eq 1 ]] && echo y || echo ies) found, $total item(s) in total:"
-for i in "${todo[@]}"; do printf '  %7s  %s\n' "${R_ITEMS[i]}" "${R_FULL[i]}"; done
+echo "${C}${#todo[@]} director$([[ ${#todo[@]} -eq 1 ]] && echo y || echo ies) found, $total item(s) in total:${N}"
+for i in "${todo[@]}"; do printf '  %s%7s%s  %s\n' "$D" "${R_ITEMS[i]}" "$N" "${R_FULL[i]}"; done
 echo
 
 if [[ $FORCE -eq 0 && $DRYRUN -eq 0 ]]; then
     action="EMPTY AND REMOVE"; [[ $KEEP -eq 1 ]] && action="EMPTY"
-    read -r -p "Type YES to $action these ${#todo[@]} directories: " answer || answer=""
-    [[ "$answer" == YES ]] || { echo "Cancelled. Nothing was changed."; exit 1; }
+    read -r -p "${EB}Type ${ER}YES${EN}${EB} to ${ER}$action${EN}${EB} these ${#todo[@]} directories:${EN} " answer || answer=""
+    [[ "$answer" == YES ]] || { echo "${Y}Cancelled. Nothing was changed.${N}"; exit 1; }
 fi
 
 # ---------- empty ----------
 for i in "${todo[@]}"; do
     d="${R_FULL[i]}"
     if [[ $DRYRUN -eq 1 ]]; then
-        echo "DRY RUN: would $([[ $KEEP -eq 1 ]] && echo empty || echo 'empty and remove') $d"
+        echo "${C}DRY RUN:${N} would $([[ $KEEP -eq 1 ]] && echo empty || echo 'empty and remove') $d"
         R_STATUS[i]=DryRun; continue
     fi
     find "$d" -mindepth 1 -delete 2>/dev/null
     left="$(item_count "$d")"
     if [[ $left -gt 0 ]]; then
         R_STATUS[i]=Partial; R_DETAIL[i]="$left item(s) remain (permissions or open file?)"
-        printf '\033[31mPARTIAL: %s (%s left)\033[0m\n' "$d" "$left"
+        printf '%sPARTIAL: %s (%s left)%s\n' "$R" "$d" "$left" "$N"
     elif [[ $KEEP -eq 1 ]]; then
-        R_STATUS[i]=Emptied; printf '\033[32mEMPTIED: %s\033[0m\n' "$d"
+        R_STATUS[i]=Emptied; printf '%sEMPTIED: %s%s\n' "$G" "$d" "$N"
     elif rmdir -- "$d" 2>/dev/null; then
-        R_STATUS[i]=Removed; printf '\033[32mREMOVED: %s\033[0m\n' "$d"
+        R_STATUS[i]=Removed; printf '%sREMOVED: %s%s\n' "$G" "$d" "$N"
     else
         R_STATUS[i]=Emptied; R_DETAIL[i]="Emptied but folder not removed"
-        printf '\033[33mEMPTIED (folder kept): %s\033[0m\n' "$d"
+        printf '%sEMPTIED (folder kept): %s%s\n' "$Y" "$d" "$N"
     fi
 done
 
@@ -243,8 +248,10 @@ csv() { local s="${1//\"/\"\"}"; printf '"%s"' "$s"; }
 } > "$LOG" || warn "Could not write log: $LOG"
 
 echo
-printf '%s\n' "${R_STATUS[@]}" | sort | uniq -c | awk '{printf "%-14s %s\n", $2, $1}'
-echo "Log: $LOG"
+# status counts: good green, dry run cyan, skipped/partial red; codes sit outside the padded field
+printf '%s\n' "${R_STATUS[@]}" | sort | uniq -c | awk -v g="$G" -v r="$R" -v c="$C" -v n="$N" '
+    { k = ($2 ~ /^(Removed|Emptied)$/) ? g : ($2 == "DryRun") ? c : r; printf "%s%-14s%s %s\n", k, $2, n, $1 }'
+echo "${D}Log:${N} $LOG"
 
 for s in "${R_STATUS[@]}"; do
     case "$s" in Partial|Blocked|NotFound|NotADirectory) exit 2 ;; esac

@@ -10,6 +10,9 @@ param(
     [ValidateRange(100, 32767)][int]$MaxPath = 260,
     [string]$CsvPath
 )
+# Colour only on an interactive console: not when redirected, piped, or NO_COLOR is set.
+$useColor = $Host.UI.SupportsVirtualTerminal -and -not [Console]::IsOutputRedirected -and -not $env:NO_COLOR -and $MyInvocation.PipelinePosition -eq $MyInvocation.PipelineLength
+function Paint([string]$Code, [string]$Text) { if ($useColor) { "$([char]27)[${Code}m$Text$([char]27)[0m" } else { $Text } }
 if (-not (Test-Path -LiteralPath $Path -PathType Container)) { Write-Error "Not a directory: $Path"; exit 1 }
 $root = (Resolve-Path -LiteralPath $Path).ProviderPath.TrimEnd('\')
 $long = if ($root.StartsWith('\\')) { '\\?\UNC\' + $root.Substring(2) } else { '\\?\' + $root }
@@ -28,9 +31,9 @@ $found = Get-ChildItem -LiteralPath $long -Recurse -Force -ErrorAction SilentlyC
     if ($name -match $reserved)    { $issues += 'ReservedName' }
     if ($issues) { [pscustomobject]@{ Issue = $issues -join ','; Length = $full.Length; Path = $full } }
 }
-if (-not $found) { "No sync problems found under $root"; exit 0 }
+if (-not $found) { Paint '32' "No sync problems found under $root"; exit 0 }
 $found | Sort-Object Issue, Path | Format-Table -AutoSize -Wrap | Out-String -Width 4096
-$found | Group-Object { ($_.Issue -split ',')[0] } | ForEach-Object { '{0,-20} {1}' -f $_.Name, $_.Count }
-if ($CsvPath) { $found | Export-Csv -LiteralPath $CsvPath -NoTypeInformation; "Saved: $CsvPath" }
-"$(@($found).Count) item(s) with problems"
+$found | Group-Object { ($_.Issue -split ',')[0] } | ForEach-Object { (Paint '33' ('{0,-20}' -f $_.Name)) + ' ' + $_.Count }
+if ($CsvPath) { $found | Export-Csv -LiteralPath $CsvPath -NoTypeInformation; Paint '2' "Saved: $CsvPath" }
+Paint '1;33' "$(@($found).Count) item(s) with problems"
 exit 2

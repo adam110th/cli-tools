@@ -8,16 +8,19 @@
 # Commands are installed without the .sh extension (pathlist, portcheck, ...), so names match Windows.
 # refreshenv must be sourced, so it is installed as refreshenv.sh plus a "refreshenv" shell function.
 #
-# Usage: ./install.sh [--user|--system] [--uninstall]
+# --extras also runs install-extras.sh: recommended third-party tools (eza, bat, fzf, gh, ...) from the
+# package manager, plus their aliases. See README "Third-party tools".
+#
+# Usage: ./install.sh [--user|--system] [--extras] [--uninstall]
 #   default scope: --system when run as root, otherwise --user
 set -euo pipefail
 
-APP=cli-tools VERSION=1.1.1
-scope="" uninstall=0
+APP=cli-tools VERSION=1.2.0
+scope="" uninstall=0 extras=0
 for a in "$@"; do
     case "$a" in
-        --user) scope=user ;; --system) scope=system ;; --uninstall) uninstall=1 ;;
-        -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+        --user) scope=user ;; --system) scope=system ;; --uninstall) uninstall=1 ;; --extras) extras=1 ;;
+        -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
         *) echo "Unknown option: $a (see --help)" >&2; exit 1 ;;
     esac
 done
@@ -51,6 +54,12 @@ if [[ $uninstall -eq 1 ]]; then
     for f in "${rcfiles[@]}"; do
         if [[ $scope == system ]]; then rm -f -- "$f"; else remove_block "$f"; fi
     done
+    # aliases from install-extras.sh (the third-party packages themselves are left installed)
+    if [[ $scope == user ]]; then
+        for f in "$HOME/.bashrc" "$HOME/.zshrc"; do
+            [[ -f "$f" ]] && sed -i '\|^# >>> cli-tools extras >>>$|,\|^# <<< cli-tools extras <<<$|d' "$f"
+        done
+    fi
     echo "Uninstalled ($scope scope). Open a new terminal to drop the refreshenv function."
     exit 0
 fi
@@ -62,6 +71,7 @@ shopt -s nullglob
 tools=("$lin"/*.sh)
 shopt -u nullglob
 tools=("${tools[@]/$lin\/install.sh/}")
+tools=("${tools[@]/$lin\/install-extras.sh/}")
 [[ ${#tools[@]} -ge 2 ]] || { echo "No tool scripts found in $lin" >&2; exit 1; }
 
 # ---------- copy ----------
@@ -112,4 +122,8 @@ fi
 echo
 echo "Open a new terminal (or run: source ${rcfiles[-1]}) to use the commands and the refreshenv function."
 [[ $scope == system ]] && echo "Note: /etc/profile.d is read by login shells; on Ubuntu new terminal windows inherit it after you log out and back in."
+if [[ $extras -eq 1 ]]; then
+    [[ -f "$src/install-extras.sh" ]] || { echo "install-extras.sh not found next to install.sh" >&2; exit 1; }
+    bash "$src/install-extras.sh" || exit $?
+fi
 exit 0

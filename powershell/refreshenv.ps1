@@ -10,6 +10,9 @@ if ($MyInvocation.InvocationName -ne '.') {
     Write-Warning 'Run this dot-sourced:  . refreshenv.ps1   (otherwise the changes vanish when the script ends)'
     return
 }
+# Colour only on an interactive console: not when redirected, piped, or NO_COLOR is set. Names prefixed and removed at the end.
+$_reColor = $Host.UI.SupportsVirtualTerminal -and -not [Console]::IsOutputRedirected -and -not $env:NO_COLOR -and $MyInvocation.PipelinePosition -eq $MyInvocation.PipelineLength
+function _rePaint([string]$Code, [string]$Text) { if ($_reColor) { "$([char]27)[${Code}m$Text$([char]27)[0m" } else { $Text } }
 $_reOld = $env:PATH -split ';' | Where-Object { $_ }
 foreach ($_reScope in 'Machine', 'User') {
     $_reVars = [Environment]::GetEnvironmentVariables($_reScope)
@@ -24,8 +27,9 @@ $_reNew = foreach ($_reScope in 'Machine', 'User') {
 }
 $_reSeen = @{}
 $env:PATH = ($_reNew | Where-Object { $k = $_.TrimEnd('\').ToLower(); if ($_reSeen.ContainsKey($k)) { $false } else { $_reSeen[$k] = 1; $true } }) -join ';'
-'Environment refreshed.'
+_rePaint '32' 'Environment refreshed.'
 Compare-Object @($_reOld) @($env:PATH -split ';') | ForEach-Object {
-    if ($_.SideIndicator -eq '=>') { '  added:   ' + $_.InputObject } else { '  removed: ' + $_.InputObject }
+    if ($_.SideIndicator -eq '=>') { '  ' + (_rePaint '32' 'added:') + '   ' + $_.InputObject } else { '  ' + (_rePaint '33' 'removed:') + ' ' + $_.InputObject }
 }
-Remove-Variable _reOld, _reNew, _reSeen, _reScope, _reVars, _reKey -ErrorAction SilentlyContinue
+Remove-Variable _reOld, _reNew, _reSeen, _reScope, _reVars, _reKey, _reColor -ErrorAction SilentlyContinue
+Remove-Item Function:\_rePaint -ErrorAction SilentlyContinue

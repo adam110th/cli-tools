@@ -43,6 +43,9 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Colour only on an interactive console: not when redirected, piped, or NO_COLOR is set.
+$useColor = $Host.UI.SupportsVirtualTerminal -and -not [Console]::IsOutputRedirected -and -not $env:NO_COLOR -and $MyInvocation.PipelinePosition -eq $MyInvocation.PipelineLength
+function Paint([string]$Code, [string]$Text) { if ($useColor) { "$([char]27)[${Code}m$Text$([char]27)[0m" } else { $Text } }
 
 # ---------- helpers ----------
 function Get-LongPath([string]$Path) {
@@ -65,7 +68,7 @@ function Read-YesNo([string]$Question) {
         $a = (Read-Host "$Question [Y/N]").Trim()
         if ($a -match '^(y|yes)$') { return $true }
         if ($a -match '^(n|no)$')  { return $false }
-        Write-Host 'Please answer Y or N.' -ForegroundColor Yellow
+        Write-Host (Paint '33' 'Please answer Y or N.')
     }
 }
 
@@ -165,15 +168,15 @@ Write-Host "Read $(@($entries).Count) entr$(if (@($entries).Count -eq 1) {'y'} e
 $needsBase = @($entries | Where-Object { -not (Test-IsAbsolute $_) }).Count -gt 0
 if ($needsBase) {
     if ($BasePath) {
-        Write-Host "Base path (parameter): $BasePath"
+        Write-Host ((Paint '2' 'Base path (parameter):') + " $BasePath")
     } elseif ($fileBase) {
         $BasePath = $fileBase
-        Write-Host "Base path (from input file): $BasePath"
+        Write-Host ((Paint '2' 'Base path (from input file):') + " $BasePath")
     } else {
         $cwd = (Get-Location).ProviderPath
         Write-Warning 'No base path was given as a parameter or found in the input file.'
         if (-not (Read-YesNo "Use the current directory '$cwd' as the base path?")) {
-            Write-Host 'Cancelled. Re-run with -BasePath or add a "base: <path>" line to the input file.'
+            Write-Host (Paint '33' 'Cancelled. Re-run with -BasePath or add a "base: <path>" line to the input file.')
             exit 1
         }
         $BasePath = $cwd
@@ -228,18 +231,18 @@ foreach ($r in $results | Where-Object { $_.Status -ne 'Found' }) {
 }
 
 $todo = @($results | Where-Object { $_.Status -eq 'Found' })
-if ($todo.Count -eq 0) { Write-Host 'Nothing to do: no listed directories were found.' -ForegroundColor Yellow; exit 1 }
+if ($todo.Count -eq 0) { Write-Host (Paint '33' 'Nothing to do: no listed directories were found.'); exit 1 }
 
 $total = ($todo | Measure-Object Items -Sum).Sum
 Write-Host ''
-Write-Host "$($todo.Count) director$(if ($todo.Count -eq 1) {'y'} else {'ies'}) found, $total item(s) in total:" -ForegroundColor Cyan
-$todo | ForEach-Object { Write-Host ("  {0,7}  {1}" -f $_.Items, $_.FullPath) }
+Write-Host (Paint '1;36' "$($todo.Count) director$(if ($todo.Count -eq 1) {'y'} else {'ies'}) found, $total item(s) in total:")
+$todo | ForEach-Object { Write-Host ("  {0}  {1}" -f (Paint '2' ('{0,7}' -f $_.Items)), $_.FullPath) }
 Write-Host ''
 
 if (-not $Force -and -not $WhatIfPreference) {
     $action = if ($KeepFolders) { 'EMPTY' } else { 'EMPTY AND REMOVE' }
-    $answer = Read-Host "Type YES to $action these $($todo.Count) directories"
-    if ($answer -cne 'YES') { Write-Host 'Cancelled. Nothing was changed.'; exit 1 }
+    $answer = Read-Host "Type $(Paint '1' 'YES') to $(Paint '1;31' $action) these $($todo.Count) directories"
+    if ($answer -cne 'YES') { Write-Host (Paint '33' 'Cancelled. Nothing was changed.'); exit 1 }
 }
 
 # ---------- empty ----------
@@ -269,13 +272,13 @@ try {
         $left = Get-ItemCount $r.FullPath
         if ($left -gt 0) {
             $r.Status = 'Partial'; $r.Detail = (("$left item(s) remain (sync lock or open file?) " + $r.Detail).Trim())
-            Write-Host "PARTIAL: $($r.FullPath) ($left left)" -ForegroundColor Red
+            Write-Host ((Paint '31' 'PARTIAL:') + " $($r.FullPath) ($left left)")
         } elseif ($KeepFolders) {
-            $r.Status = 'Emptied'; Write-Host "EMPTIED: $($r.FullPath)" -ForegroundColor Green
+            $r.Status = 'Emptied'; Write-Host ((Paint '32' 'EMPTIED:') + " $($r.FullPath)")
         } else {
-            try   { Remove-Item -LiteralPath $long -Force; $r.Status = 'Removed'; Write-Host "REMOVED: $($r.FullPath)" -ForegroundColor Green }
+            try   { Remove-Item -LiteralPath $long -Force; $r.Status = 'Removed'; Write-Host ((Paint '32' 'REMOVED:') + " $($r.FullPath)") }
             catch { $r.Status = 'Emptied'; $r.Detail = "Emptied but folder not removed: $($_.Exception.Message)"
-                    Write-Host "EMPTIED (folder kept): $($r.FullPath)" -ForegroundColor Yellow }
+                    Write-Host ((Paint '33' 'EMPTIED (folder kept):') + " $($r.FullPath)") }
         }
     }
 } finally {
@@ -288,8 +291,11 @@ if (-not $LogPath) {
 }
 $results | Export-Csv -LiteralPath $LogPath -NoTypeInformation
 Write-Host ''
-$results | Group-Object Status | ForEach-Object { Write-Host ("{0,-14} {1}" -f $_.Name, $_.Count) }
-Write-Host "Log: $LogPath"
+$results | Group-Object Status | ForEach-Object {
+    $code = switch ($_.Name) { { $_ -in 'Removed', 'Emptied' } { '32' } 'WhatIf' { '36' } 'NotFound' { '33' } default { '31' } }
+    Write-Host ((Paint $code ('{0,-14}' -f $_.Name)) + " $($_.Count)")
+}
+Write-Host ((Paint '2' 'Log:') + " $LogPath")
 
 if (@($results | Where-Object { $_.Status -in 'Partial', 'Invalid', 'Blocked', 'NotFound', 'NotADirectory' }).Count -gt 0) { exit 2 }
 exit 0

@@ -1,6 +1,6 @@
 @echo off
 rem install - runs install.ps1 from this folder, then refreshes this window's PATH.
-rem Same arguments as install.ps1, e.g.:   install    install -Scope Machine    install -Uninstall
+rem Same arguments as install.ps1, e.g.:   install    install -Scope Machine    install -Extras    install -Uninstall
 setlocal
 if not exist "%~dp0install.ps1" goto missing
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1" %*

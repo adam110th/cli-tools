@@ -10,7 +10,7 @@ Shows a device's Intune / MDM state in one place: Entra join, tenant, MDM enrolm
 
 ## Windows output
 - **Join status** from `dsregcmd /status`: AzureAdJoined, DomainJoined, WorkplaceJoined, TenantName, TenantId, DeviceId.
-- **MDM enrolments** from `HKLM\SOFTWARE\Microsoft\Enrollments` (provider `MS DM Server`), with the enrolled UPN and the last run of the `PushLaunch` sync task.
+- **MDM enrolments** from `HKLM\SOFTWARE\Microsoft\Enrollments` (provider `MS DM Server`), with the enrolled UPN and the last run of the `PushLaunch` sync task. The sync result code is followed by a short name, for example `(result 0x0 - Success)` or `(result 0x82AC0204 - DM session aborted: device roaming)`. Names come from a built-in list of common codes, then Windows' own error text (including `certutil -error`); `unknown` if neither knows the code.
 - **Intune Management Extension**: service state, log folder (`C:\ProgramData\Microsoft\IntuneManagementExtension\Logs`) and when the main log last changed. The IME handles Win32 apps, PowerShell scripts and remediations.
 
 ## -Sync

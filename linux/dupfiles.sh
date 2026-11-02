@@ -3,9 +3,14 @@
 # Usage: dupfiles.sh [PATH] [MIN_SIZE_KB]   (defaults: current directory, 1)
 # Exit: 0 no duplicates, 2 duplicates found. File names containing the 0x1F control character are not supported.
 set -u
+# colour only on a terminal, and never when NO_COLOR is set (https://no-color.org); E* are the stderr set.
+# Not every tool uses every colour, hence the SC2034 directive.
+# shellcheck disable=SC2034
+{ if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then R=$'\e[31m' G=$'\e[32m' Y=$'\e[33m' C=$'\e[1;36m' B=$'\e[1m' D=$'\e[2m' N=$'\e[0m'; else R='' G='' Y='' C='' B='' D='' N=''; fi
+  if [[ -t 2 && -z "${NO_COLOR:-}" ]]; then ER=$'\e[31m' EY=$'\e[33m' EB=$'\e[1m' EN=$'\e[0m'; else ER='' EY='' EB='' EN=''; fi; }
 p="${1:-.}" minkb="${2:-1}"
-[[ -d "$p" ]] || { echo "Not a directory: $p" >&2; exit 1; }
-[[ "$minkb" =~ ^[0-9]+$ ]] || { echo "MIN_SIZE_KB must be a number" >&2; exit 1; }
+[[ -d "$p" ]] || { echo "${ER}Not a directory: $p${EN}" >&2; exit 1; }
+[[ "$minkb" =~ ^[0-9]+$ ]] || { echo "${ER}MIN_SIZE_KB must be a number${EN}" >&2; exit 1; }
 minbytes=$((minkb * 1024))
 
 declare -A bysize=()
@@ -30,9 +35,9 @@ for h in "${!byhash[@]}"; do
     IFS=$'\x1f' read -r -a files <<< "${byhash[$h]%$'\x1f'}"
     [[ ${#files[@]} -gt 1 ]] || continue
     groups=$((groups + 1)); w=$(( hsize[$h] * (${#files[@]} - 1) )); wasted=$((wasted + w))
-    echo "${#files[@]} copies x $(numfmt --to=iec --suffix=B "${hsize[$h]}")  (wasted $(numfmt --to=iec --suffix=B "$w"))  sha256 ${h:0:12}"
+    echo "${Y}${#files[@]} copies x $(numfmt --to=iec --suffix=B "${hsize[$h]}")${N}  ${D}(wasted $(numfmt --to=iec --suffix=B "$w"))  sha256 ${h:0:12}${N}"
     printf '  %s\n' "${files[@]}"
 done
 echo
-if [[ $groups -eq 0 ]]; then echo "No duplicates found."; exit 0; fi
-echo "$groups duplicate group(s), $(numfmt --to=iec --suffix=B "$wasted") reclaimable."; exit 2
+if [[ $groups -eq 0 ]]; then echo "${G}No duplicates found.${N}"; exit 0; fi
+echo "${Y}$groups duplicate group(s), $(numfmt --to=iec --suffix=B "$wasted") reclaimable.${N}"; exit 2

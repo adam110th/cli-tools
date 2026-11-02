@@ -10,4 +10,8 @@ for /f "tokens=2,*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Se
 for /f "tokens=2,*" %%a in ('reg query "HKCU\Environment" /v Path 2^>nul ^| findstr /c:"REG_"') do set "_RE_U=%%b"
 call set "PATH=%_RE_M%;%_RE_U%"
 set "_RE_M=" & set "_RE_U="
-echo Environment refreshed.
+rem Colour via VT escapes unless NO_COLOR is set; the variable is cleared again so nothing leaks into the window.
+set "_RE_ESC="
+if not defined NO_COLOR for /f %%a in ('echo prompt $E^| cmd /d') do set "_RE_ESC=%%a"
+if defined _RE_ESC (echo %_RE_ESC%[32mEnvironment refreshed.%_RE_ESC%[0m) else echo Environment refreshed.
+set "_RE_ESC="
