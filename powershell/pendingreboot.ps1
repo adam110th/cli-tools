@@ -1,6 +1,9 @@
 <#
 .SYNOPSIS  Is a reboot pending, and why? Exit 0 = no, 2 = yes.
 #>
+# Colour only on an interactive console: not when redirected, piped, or NO_COLOR is set.
+$useColor = $Host.UI.SupportsVirtualTerminal -and -not [Console]::IsOutputRedirected -and -not $env:NO_COLOR -and $MyInvocation.PipelinePosition -eq $MyInvocation.PipelineLength
+function Paint([string]$Code, [string]$Text) { if ($useColor) { "$([char]27)[${Code}m$Text$([char]27)[0m" } else { $Text } }
 $reasons = @()
 if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending') {
     $reasons += 'Component Based Servicing (Windows updates or features)' }
@@ -15,5 +18,5 @@ if ($active -and $pending -and $active -ne $pending) { $reasons += "Computer ren
 $boot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
 $up = (Get-Date) - $boot
 'Last boot: {0:dd/MM/yyyy HH:mm} ({1}d {2}h ago)' -f $boot, $up.Days, $up.Hours
-if ($reasons) { $reasons | ForEach-Object { "PENDING: $_" }; 'Reboot pending.'; exit 2 }
-'No reboot pending.'; exit 0
+if ($reasons) { $reasons | ForEach-Object { (Paint '33' 'PENDING:') + " $_" }; Paint '33' 'Reboot pending.'; exit 2 }
+Paint '32' 'No reboot pending.'; exit 0

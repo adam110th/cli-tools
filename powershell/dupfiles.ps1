@@ -12,6 +12,9 @@ param(
     [switch]$IncludeCloudOnly,
     [string]$CsvPath
 )
+# Colour only on an interactive console: not when redirected, piped, or NO_COLOR is set.
+$useColor = $Host.UI.SupportsVirtualTerminal -and -not [Console]::IsOutputRedirected -and -not $env:NO_COLOR -and $MyInvocation.PipelinePosition -eq $MyInvocation.PipelineLength
+function Paint([string]$Code, [string]$Text) { if ($useColor) { "$([char]27)[${Code}m$Text$([char]27)[0m" } else { $Text } }
 function Format-Size([double]$b) {
     if ($b -ge 1GB) { '{0:N1} GB' -f ($b / 1GB) } elseif ($b -ge 1MB) { '{0:N1} MB' -f ($b / 1MB) }
     elseif ($b -ge 1KB) { '{0:N1} KB' -f ($b / 1KB) } else { "$b B" }
@@ -35,19 +38,19 @@ $hashed = foreach ($f in $candidates) {
 Write-Progress -Activity 'Hashing candidates' -Completed
 $groups = @($hashed | Group-Object Hash | Where-Object Count -gt 1 | Sort-Object { $_.Group[0].Length * ($_.Count - 1) } -Descending)
 
-if ($skipped) { "Skipped $skipped online-only cloud file(s); use -IncludeCloudOnly to include them (downloads them)." }
-if (-not $groups) { 'No duplicates found.'; exit 0 }
+if ($skipped) { Paint '2' "Skipped $skipped online-only cloud file(s); use -IncludeCloudOnly to include them (downloads them)." }
+if (-not $groups) { Paint '32' 'No duplicates found.'; exit 0 }
 $total = 0; $g = 0; $rows = @()
 foreach ($grp in $groups) {
     $g++; $size = $grp.Group[0].Length; $wasted = $size * ($grp.Count - 1); $total += $wasted
     ''
-    '{0} copies x {1}  (wasted {2})  sha256 {3}' -f $grp.Count, (Format-Size $size), (Format-Size $wasted), $grp.Name.Substring(0, 12).ToLower()
+    Paint '33' ('{0} copies x {1}  (wasted {2})  sha256 {3}' -f $grp.Count, (Format-Size $size), (Format-Size $wasted), $grp.Name.Substring(0, 12).ToLower())
     $grp.Group | Sort-Object Modified | ForEach-Object {
-        '  {0:dd/MM/yyyy}  {1}' -f $_.Modified, $_.Path
+        '  {0}  {1}' -f (Paint '2' $_.Modified.ToString('dd/MM/yyyy')), $_.Path
         $rows += [pscustomobject]@{ Group = $g; Hash = $_.Hash; Bytes = $_.Length; Modified = $_.Modified.ToString('dd/MM/yyyy HH:mm'); Path = $_.Path }
     }
 }
 ''
-'{0} duplicate group(s), {1} reclaimable.' -f $groups.Count, (Format-Size $total)
-if ($CsvPath) { $rows | Export-Csv -LiteralPath $CsvPath -NoTypeInformation; "Saved: $CsvPath" }
+Paint '1;33' ('{0} duplicate group(s), {1} reclaimable.' -f $groups.Count, (Format-Size $total))
+if ($CsvPath) { $rows | Export-Csv -LiteralPath $CsvPath -NoTypeInformation; Paint '2' "Saved: $CsvPath" }
 exit 2

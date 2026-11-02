@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.2.0 - 02/11/2026
+
+### Added
+- **Third-party tools (extras),** kept separate from cli-tools' own tools: `install-extras.sh` (Linux) and `install-extras.ps1` (Windows) install thefuck, zoxide, tldr, scc, eza, duf, bat, exiftool, fdupes, fzf, jq, procs, browsh, ddgr, lazygit, asciinema, neofetch (fastfetch on Windows), tre, git, gh and claude. Run them through `install.sh --extras` / `install.cmd -Extras`, or on their own. See [docs/extras.md](docs/extras.md).
+  - Linux: apt, dnf/yum, pacman, zypper, apk or brew; adds the GitHub CLI apt repository and keyring, and the eza repository when the distro has no eza package; GitHub-release fallback for unpackaged tools.
+  - Windows: installs Chocolatey if missing, installs with Chocolatey and falls back to winget.
+  - Shell setup: `eza` runs as `eza -a -l -h -M --icons=always`, plus the zoxide hook (and on Linux the thefuck hook and `bat` for `batcat`). Removed by uninstall.
+- `cli-tools --help`, `man cli-tools` and the README list the third-party tools in their own section.
+- **Colour output** in every tool on all three platforms: status words, headings and problems are coloured on a terminal, piped output stays plain, and `NO_COLOR` turns it off.
+
+### Fixed
+- `sysinfo` showed firmware placeholders ("System Product Name", "System Serial Number", "To be filled by O.E.M.") on custom-built PCs. It now ignores them and shows the motherboard's maker, model and serial, marked `(motherboard)`.
+
+### Changed
+- `mdmstatus` (Windows) shows a short name after the last-sync result code, for example `(result 0x82AC0204 - DM session aborted: device roaming)`.
+- `sysinfo` (PowerShell) colours disks yellow at 80% used and red at 90%. In `sysinfo.cmd` the serial line is now aligned with the other lines.
+- Installers report version 1.2.0.
+
 ## v1.1.1 - 26/10/2026
 
 ### Fixed

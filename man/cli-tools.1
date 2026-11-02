@@ -1,4 +1,4 @@
-.TH CLI-TOOLS 1 "26 October 2026" "cli-tools 1.1.1" "User Commands"
+.TH CLI-TOOLS 1 "2 November 2026" "cli-tools 1.2.0" "User Commands"
 .SH NAME
 cli-tools \- everyday command-line utilities: paths, system, network, files and disk
 .SH SYNOPSIS
@@ -195,6 +195,106 @@ Results CSV (default
 .BR \-h ", " \-\-help
 Show its own help.
 .RE
+.SH THIRD-PARTY TOOLS
+These are other people's projects, not part of
+.BR cli-tools ,
+recommended alongside it. Install them with
+.B install.sh \-\-extras
+or
+.BR "install-extras.sh " [ \fITOOL\fR ...],
+which use the system package manager (apt, dnf, pacman, zypper, apk or brew), add the
+GitHub CLI and eza apt repositories and keyrings where needed, and fall back to the
+project's GitHub release for tools a distribution does not package. Update them with the
+package manager. Each has its own
+.B \-\-help
+and manual page.
+.PP
+The installer also adds a marked block to
+.I ~/.bashrc
+and
+.I ~/.zshrc
+that aliases
+.B eza
+to
+.BR "eza \-a \-l \-h \-M \-\-icons=always" ,
+aliases
+.B bat
+to
+.B batcat
+on Debian and Ubuntu, and loads the
+.B zoxide
+and
+.B thefuck
+shell hooks.
+.TP
+.B thefuck
+Fix the previous command: type
+.B fuck
+after a typo.
+.TP
+.B zoxide
+Smarter cd:
+.BI "z " NAME
+jumps to a frequently used folder;
+.B zi
+picks one with fzf.
+.TP
+.B tldr
+Short, example-first help pages (tealdeer client).
+.TP
+.B scc
+Count lines of code, comments and complexity per language.
+.TP
+.B eza
+Modern ls.
+.TP
+.B duf
+Disk usage and free space per filesystem, as a table.
+.TP
+.B bat
+cat with syntax highlighting and paging.
+.TP
+.B exiftool
+Read and write photo and document metadata (EXIF, XMP, IPTC and more).
+.TP
+.B fdupes
+Find, and optionally delete, duplicate files.
+.TP
+.B fzf
+Fuzzy finder for any list: files, history, command output.
+.TP
+.B jq
+Query and reshape JSON.
+.TP
+.B procs
+Modern ps: coloured, searchable process list.
+.TP
+.B browsh
+Text-mode web browser (needs Firefox).
+.TP
+.B ddgr
+DuckDuckGo search from the terminal.
+.TP
+.B lazygit
+Terminal UI for git.
+.TP
+.B asciinema
+Record and replay terminal sessions.
+.TP
+.B neofetch
+System summary beside the distribution logo (fastfetch where neofetch is no longer packaged).
+.TP
+.B tre
+tree that respects .gitignore.
+.TP
+.B git
+Version control.
+.TP
+.B gh
+GitHub CLI: pull requests, issues, releases, sign-in.
+.TP
+.B claude
+Claude Code, Anthropic's coding agent for the terminal.
 .SH EXIT STATUS
 .TP
 .B 0

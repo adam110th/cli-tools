@@ -2,7 +2,10 @@
 # cli-tools - help for cli-tools: every tool, its arguments and options, and what it does.
 # Usage: cli-tools [-h|--help]   (plain "cli-tools" shows the same help; see also: man cli-tools)
 set -u
-VERSION=1.1.1
+VERSION=1.2.0
+# colour only on a terminal, and never when NO_COLOR is set (https://no-color.org); E* are the stderr set.
+{ if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then C=$'\e[1;36m' B=$'\e[1m' N=$'\e[0m'; else C='' B='' N=''; fi
+  if [[ -t 2 && -z "${NO_COLOR:-}" ]]; then ER=$'\e[31m' EN=$'\e[0m'; else ER='' EN=''; fi; }
 
 show_help() {
     cat <<EOF
@@ -123,12 +126,44 @@ HELP
 
   cli-tools [-h | --help]
       This help.  man cli-tools  shows the same reference as a manual page.
+
+THIRD-PARTY TOOLS (not part of cli-tools)
+
+  Other people's projects, recommended alongside cli-tools. Install them with
+  "install.sh --extras" or "install-extras.sh [TOOL...]", which use your package manager
+  (apt, dnf, pacman, zypper, apk or brew) and add the gh and eza apt repositories where
+  needed. Update them with your package manager; each has its own --help and man page.
+
+  thefuck     Fix the previous command: type "fuck" after a typo.
+  zoxide      Smarter cd: "z NAME" jumps to a frequently used folder; "zi" picks with fzf.
+  tldr        Short, example-first help pages: tldr tar  (tealdeer client).
+  scc         Count lines of code, comments and complexity per language.
+  eza         Modern ls. Aliased to: eza -a -l -h -M --icons=always
+  duf         Disk usage and free space per filesystem, as a table.
+  bat         cat with syntax highlighting and paging (batcat on Debian/Ubuntu; aliased).
+  exiftool    Read and write photo and document metadata (EXIF, XMP, IPTC, ...).
+  fdupes      Find, and optionally delete, duplicate files.
+  fzf         Fuzzy finder for any list: files, history, command output.
+  jq          Query and reshape JSON.
+  procs       Modern ps: coloured, searchable process list.
+  browsh      Text-mode web browser (needs Firefox).
+  ddgr        DuckDuckGo search from the terminal.
+  lazygit     Terminal UI for git.
+  asciinema   Record and replay terminal sessions.
+  neofetch    System summary beside the distro logo (fastfetch where neofetch is gone).
+  tre         tree that respects .gitignore.
+  git         Version control.
+  gh          GitHub CLI: pull requests, issues, releases, sign-in.
+  claude      Claude Code, Anthropic's coding agent for the terminal.
 EOF
 }
 
+# headings and command names stand out on a terminal; piped help is plain text
+paint() { if [[ -n "$C" ]]; then sed -E "s/^([A-Z][A-Z -]+( \(.*\))?)$/$C\1$N/; s/^  ([a-z][a-z-]+)( +[A-Z[]|  |$)/  $B\1$N\2/"; else cat; fi; }
+
 case "${1:-}" in
-    ""|-h|--help|help) [[ $# -le 1 ]] && { show_help; exit 0; } ;;
+    ""|-h|--help|help) [[ $# -le 1 ]] && { show_help | paint; exit 0; } ;;
 esac
-echo "Unknown option: $*" >&2
-show_help
+echo "${ER}Unknown option: $*${EN}" >&2
+show_help | paint
 exit 1
