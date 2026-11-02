@@ -4,6 +4,7 @@
 # Locations (systemd file-hierarchy(7) / XDG for user installs, FHS /usr/local for system installs):
 #   user    commands in ~/.local/bin           docs in ~/.local/share/cli-tools
 #   system  commands in /usr/local/bin         docs in /usr/local/share/cli-tools
+# The cli-tools(1) man page goes in ~/.local/share/man/man1 or /usr/local/share/man/man1, where man finds it.
 # Commands are installed without the .sh extension (pathlist, portcheck, ...), so names match Windows.
 # refreshenv must be sourced, so it is installed as refreshenv.sh plus a "refreshenv" shell function.
 #
@@ -11,12 +12,12 @@
 #   default scope: --system when run as root, otherwise --user
 set -euo pipefail
 
-APP=cli-tools VERSION=1.0.0
+APP=cli-tools VERSION=1.1.1
 scope="" uninstall=0
 for a in "$@"; do
     case "$a" in
         --user) scope=user ;; --system) scope=system ;; --uninstall) uninstall=1 ;;
-        -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
         *) echo "Unknown option: $a (see --help)" >&2; exit 1 ;;
     esac
 done
@@ -24,10 +25,11 @@ done
 if [[ $scope == system && $EUID -ne 0 ]]; then echo "--system needs root: sudo $0 --system" >&2; exit 1; fi
 
 if [[ $scope == system ]]; then
-    bindir=/usr/local/bin sharedir=/usr/local/share/$APP
+    bindir=/usr/local/bin sharedir=/usr/local/share/$APP mandir=/usr/local/share/man/man1
     rcfiles=("/etc/profile.d/$APP.sh")
 else
     bindir="$HOME/.local/bin" sharedir="${XDG_DATA_HOME:-$HOME/.local/share}/$APP"
+    mandir="$HOME/.local/share/man/man1"   # man-db finds it from ~/.local/bin on PATH
     rcfiles=("$HOME/.profile" "$HOME/.bashrc")
     [[ "${SHELL:-}" == */zsh || -f "$HOME/.zshrc" ]] && rcfiles+=("$HOME/.zshrc")
 fi
@@ -45,6 +47,7 @@ if [[ $uninstall -eq 1 ]]; then
         while IFS= read -r f; do [[ -n "$f" && -e "$bindir/$f" ]] && rm -f -- "$bindir/$f"; done < "$sharedir/installed-files.txt"
     fi
     rm -rf -- "$sharedir"
+    rm -f -- "$mandir/$APP.1"
     for f in "${rcfiles[@]}"; do
         if [[ $scope == system ]]; then rm -f -- "$f"; else remove_block "$f"; fi
     done
@@ -81,9 +84,11 @@ for t in "${tools[@]}"; do
 done
 [[ -f "$src/README.md" ]] && install -m 0644 -- "$src/README.md" "$sharedir/README.md"
 [[ -d "$src/docs" ]] && { mkdir -p -- "$sharedir/docs"; cp -f -- "$src"/docs/*.md "$sharedir/docs/"; chmod 0644 "$sharedir"/docs/*.md; }
+manpage="$src/man/$APP.1"; [[ -f "$manpage" ]] || manpage="$src/$APP.1"
+if [[ -f "$manpage" ]]; then mkdir -p -- "$mandir"; install -m 0644 -- "$manpage" "$mandir/$APP.1"; fi
 echo "$VERSION" > "$sharedir/VERSION.txt"
 echo "Installed $n commands ($scope scope) to: $bindir"
-echo "Docs: $sharedir"
+echo "Docs: $sharedir   Help: cli-tools --help, man cli-tools"
 
 # ---------- PATH and refreshenv function ----------
 on_path=0

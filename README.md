@@ -4,6 +4,8 @@ A small set of everyday command-line utilities with matching **Linux (bash)**, *
 
 ## Tools
 
+Type `cli-tools` (or `cli-tools --help`, or `man cli-tools` on Linux) for a reference of every tool, its options and what it does.
+
 | Tool | What it does | Linux | PowerShell | cmd |
 |---|---|---|---|---|
 | [pathlist](docs/pathlist.md) | Print each PATH entry on its own line; flag missing and duplicate entries | native | native | native |
@@ -24,6 +26,7 @@ A small set of everyday command-line utilities with matching **Linux (bash)**, *
 | [dnscheck](docs/dnscheck.md) | Compare DNS answers from the system resolver and other servers | native | native | native (`nslookup`) |
 | [dupfiles](docs/dupfiles.md) | Find duplicate files by size then SHA256; skips online-only cloud files | native | native | wrapper |
 | [eventerrors](docs/eventerrors.md) | Recent critical and error events, summarised by source | native (`journalctl`) | native | wrapper |
+| [cli-tools](docs/cli-tools.md) | Help: every tool, its arguments, options and exit codes (`-h`, `--help`; `man cli-tools` on Linux) | native + man page | native | wrapper |
 
 **Wrapper** means the `.cmd` file runs the matching `.ps1` with the same arguments, because a native batch version would be unreliable. Wrappers look for the `.ps1` in the same folder first, then in `..\powershell\`, so they work in either layout below.
 
@@ -35,6 +38,7 @@ cli-tools/
   powershell/   *.ps1  (Windows PowerShell 5.1 or PowerShell 7+)
   cmd/          *.cmd  (Windows 10 1803+ / Windows 11)
   docs/         one page per tool
+  man/          cli-tools.1 man page (Linux)
   install.ps1   Windows installer      install.cmd  launcher for it
   install.sh    Linux installer
   .gitattributes
@@ -79,7 +83,7 @@ If execution policy blocks `install.ps1`, use `install.cmd`, which runs it with 
 
 What the installer does:
 1. Picks the scope. `-Scope Auto` (the default) uses **Machine** when running as SYSTEM, as Intune does, and **User** otherwise. Machine scope needs admin rights.
-2. Copies every `.ps1` and `.cmd` tool into one flat folder, plus `README.md`, `docs\` and `VERSION.txt`, and unblocks the files (removes the downloaded-from-internet mark).
+2. Copies every `.ps1` and `.cmd` tool (including `cli-tools`, the help command) into one flat folder, plus `README.md`, `docs\` and `VERSION.txt`, and unblocks the files (removes the downloaded-from-internet mark).
 3. Adds the folder to the **User** PATH (or **Machine** PATH for machine scope) if missing. Existing PATH entries such as `%SystemRoot%` are preserved unexpanded.
 4. Updates PATH in the current session and notifies Windows, so new windows see the change straight away. Windows that were already open need to be reopened, or run `refreshenv` (cmd) / `. refreshenv` (PowerShell).
 
@@ -112,7 +116,8 @@ What the installer does:
 2. Installs each tool **without** the `.sh` extension (`pathlist`, `portcheck`, ...) so the names match Windows. It will not overwrite a command of the same name that it did not install; it warns and skips it.
 3. Installs `refreshenv.sh` (it has to be sourced) and defines a `refreshenv` shell function so you can type `refreshenv`.
 4. Adds the bin folder to PATH if needed, in a marked block (`# >>> cli-tools >>>`) in `~/.profile`, `~/.bashrc` and `~/.zshrc` if present. System installs write `/etc/profile.d/cli-tools.sh` instead. Running the installer again replaces the block rather than adding another.
-5. Records what it installed in `installed-files.txt` so uninstall and upgrades remove exactly those files.
+5. Installs the `cli-tools(1)` man page to `~/.local/share/man/man1` (system: `/usr/local/share/man/man1`), so `man cli-tools` works.
+6. Records what it installed in `installed-files.txt` so uninstall and upgrades remove exactly those files.
 
 Open a new terminal afterwards, or `source ~/.bashrc`.
 
@@ -121,6 +126,7 @@ Copy `powershell\*.ps1` and `cmd\*.cmd` into one folder on PATH (Windows), or co
 
 ## Conventions
 
+- **Help:** `cli-tools` lists every tool. Its text lives in three places that must be kept in step: `powershell/cli-tools.ps1`, `linux/cli-tools.sh` and `man/cli-tools.1`.
 - **Exit codes:** `0` success; `1` bad arguments, nothing to do, or cancelled; `2` the check ran but the answer was negative (port closed, nothing on the port, items skipped or left behind).
 - **Validation:** host names, ports, counts and algorithm names are validated before use. Nothing user-supplied is passed through `eval` or string-built shell commands.
 - **External calls:** `netinfo` contacts `https://api.ipify.org` only when asked (`--public` / `-Public` / `/public`). `dnscheck` queries 1.1.1.1 and 8.8.8.8 by default, which sends the looked-up name to Cloudflare and Google; pass your own servers for client or internal names. `certcheck` connects only to the host you name.

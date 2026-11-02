@@ -1,0 +1,229 @@
+.TH CLI-TOOLS 1 "26 October 2026" "cli-tools 1.1.1" "User Commands"
+.SH NAME
+cli-tools \- everyday command-line utilities: paths, system, network, files and disk
+.SH SYNOPSIS
+.B cli-tools
+.RB [ \-h | \-\-help ]
+.br
+.B man cli-tools
+.SH DESCRIPTION
+.B cli-tools
+is a set of small utilities with matching Linux (bash), PowerShell and Windows Command Prompt
+versions. Each tool has the same name and purpose on every platform. Running
+.B cli-tools
+with no arguments, or with
+.B \-h
+or
+.BR \-\-help ,
+prints a summary of every tool. This page documents the Linux versions.
+.PP
+Per-tool notes are installed as
+.I docs/<tool>.md
+under
+.I ~/.local/share/cli-tools
+(user install) or
+.I /usr/local/share/cli-tools
+(system install).
+.SH PATHS AND COMMANDS
+.TP
+.B pathlist
+Print each PATH entry on its own line, flagging missing folders and duplicate entries.
+.TP
+.BI whichall " NAME " "" [ NAME ...]
+Every executable on PATH matching each
+.IR NAME ,
+in search order; the first one listed is the one that runs. Exits 1 if a name is not found.
+.TP
+.B refreshenv
+Reload PATH into the current bash session from a fresh login shell, picking up changes
+installers made to
+.I /etc/profile.d
+and
+.IR ~/.profile .
+.B refreshenv
+is a shell function set up by the installer; without it, run
+.BR "source refreshenv.sh" .
+.SH SYSTEM
+.TP
+.B sysinfo
+One-screen summary of host, OS, model, serial, uptime, CPU, memory and disks.
+.TP
+.B pendingreboot
+Report whether a reboot is pending, and why
+.RI ( /var/run/reboot-required ,
+.BR needs-restarting ).
+Exits 0 if not, 2 if a reboot is pending.
+.TP
+.B mdmstatus
+Intune status on Linux: the Microsoft Intune app and identity broker services.
+Exits 0 if the Intune app is present, 2 if it is not installed.
+.TP
+.BR eventerrors " [\fIHOURS\fR] [\fIMAX\fR] [" \-w | \-\-warnings ]
+Recent critical and error log entries from
+.BR journalctl ,
+or syslog when journald is not available. Run with
+.B sudo
+to include system-wide entries.
+.RS
+.TP
+.I HOURS
+How far back to look (default 24).
+.TP
+.I MAX
+Most entries to show (default 50).
+.TP
+.BR \-w ", " \-\-warnings
+Include warnings too.
+.RE
+.SH NETWORK
+.TP
+.BR netinfo " [" \-p | \-\-public ]
+Addresses, default gateway and DNS servers.
+.RS
+.TP
+.BR \-p ", " \-\-public
+Also look up the public IP via https://api.ipify.org (one external request; needs
+.BR curl ).
+.RE
+.TP
+.BI portcheck " HOST PORT " "" [ TIMEOUT ]
+Test whether a remote TCP port is reachable.
+.I TIMEOUT
+is in seconds (default 3). Exits 0 if open, 2 if closed or filtered.
+.TP
+.BI portowner " PORT"
+Show which process is listening on (or using) a local port. Exits 2 if nothing is using it.
+Run with
+.B sudo
+to see other users' processes.
+.TP
+.BI certcheck " HOST " "" [ PORT ] " " [ WARN_DAYS ]
+TLS certificate subject, issuer, expiry and trust for a host (needs
+.BR openssl ).
+.I PORT
+defaults to 443;
+.I WARN_DAYS
+(default 30) flags certificates expiring within that many days. Exits 0 if valid, 2 if
+expired, expiring soon or untrusted, 1 on error.
+.TP
+.BI dnscheck " NAME " "" [ TYPE ] " " [ SERVER ...]
+Resolve
+.I NAME
+with the system resolver and other DNS servers side by side. Exits 2 if the answers differ
+(normal for CDNs). Works best with
+.B dig
+installed.
+.RS
+.TP
+.I TYPE
+A (default), AAAA, CNAME, MX, TXT, NS, SRV, SOA or PTR.
+.TP
+.I SERVER
+Servers to compare against (default 1.1.1.1 and 8.8.8.8);
+.B none
+for the system resolver only. Public servers see the name you look up.
+.RE
+.SH FILES AND DISK
+.TP
+.BR dirsize " [\fIPATH\fR] [\fITOP\fR]"
+Largest immediate subfolders of
+.I PATH
+(default: current directory), staying on one filesystem.
+.I TOP
+is how many to list (default 15).
+.TP
+.BR bigfiles " [\fIPATH\fR] [\fITOP\fR]"
+Largest files under
+.I PATH
+(default: current directory), staying on one filesystem.
+.I TOP
+is how many to list (default 20).
+.TP
+.BR hashfile " [" "\-a sha256" | sha1 | md5 | sha512 "] \fIFILE\fR [\fIFILE\fR ...]"
+Hash of each file (default sha256).
+.TP
+.BR dupfiles " [\fIPATH\fR] [\fIMIN_SIZE_KB\fR]"
+Find duplicate files (same size, then same SHA256) under
+.IR PATH .
+Reports only; deletes nothing. Files smaller than
+.I MIN_SIZE_KB
+(default 1) are ignored. Exits 2 if duplicates are found.
+.TP
+.BR syncsafe " [\fIPATH\fR] [" \-\-max " \fIN\fR] [" \-\-win\-root " \fIPREFIX\fR]"
+Find names that break Windows or cloud sync: long paths, invalid characters, trailing
+spaces or dots, reserved names (CON, NUL, COM1 ...) and names over 255 characters.
+Exits 2 if any are found.
+.RS
+.TP
+.BI \-\-max " N"
+Path length to flag, 100 or more (default 260, the Windows MAX_PATH limit).
+.TP
+.BI \-\-win\-root " PREFIX"
+Measure lengths as if
+.I PATH
+were mounted at this Windows path, for example
+.BR "\-\-win\-root 'X:\e\eGoogleDrive\e\eShared'" .
+.RE
+.TP
+.BR empty\-directories " [\fIoptions\fR] \fIINPUT_FILE\fR"
+Empty (and by default remove) every directory listed in a .txt or .csv file: one path per
+line or a comma-separated list, with an optional
+.B base: /path
+line. Every entry is listed first, and nothing changes until you type YES.
+.RS
+.TP
+.BR \-b ", " \-\-base " \fIPATH\fR"
+Base path for relative entries (else the file's base: line, else the current directory
+after you confirm).
+.TP
+.BR \-f ", " \-\-format " \fIFORMAT\fR"
+auto (default), lines or comma.
+.TP
+.BR \-k ", " \-\-keep\-folders
+Empty the directories but leave the empty folders in place.
+.TP
+.BR \-n ", " \-\-dry\-run
+Validate and report only; change nothing.
+.TP
+.BR \-y ", " \-\-force
+Skip the YES confirmation.
+.TP
+.BR \-l ", " \-\-log " \fIPATH\fR"
+Results CSV (default
+.IR <inputfile>\-results\-<timestamp>.csv ).
+.TP
+.BR \-h ", " \-\-help
+Show its own help.
+.RE
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Bad arguments, nothing to do, or cancelled.
+.TP
+.B 2
+The check ran but the answer was negative (port closed, reboot pending, duplicates found,
+items skipped).
+.SH FILES
+.TP
+.I ~/.local/bin/
+User install of the commands.
+.TP
+.I /usr/local/bin/
+System install of the commands.
+.TP
+.I ~/.local/share/cli-tools/
+.TQ
+.I /usr/local/share/cli-tools/
+README, per-tool docs, VERSION.txt and the list of installed files.
+.SH SEE ALSO
+.BR which (1),
+.BR du (1),
+.BR sha256sum (1),
+.BR dig (1),
+.BR openssl (1),
+.BR journalctl (1)
+.PP
+https://github.com/adam110th/cli-tools
